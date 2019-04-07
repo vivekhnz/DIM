@@ -1,16 +1,16 @@
 import React from 'react';
 import { DimItem } from '../inventory/item-types';
 import { t } from 'i18next';
-import ItemOverview from './ItemDetails';
+import ItemDetails from './ItemDetails';
 import { ItemPopupExtraInfo } from './item-popup';
 import classNames from 'classnames';
 import ItemReviews from '../item-review/ItemReviews';
 import { percent } from '../shell/filters';
-import { AppIcon } from '../shell/icons';
-import { faChevronCircleDown } from '@fortawesome/free-solid-svg-icons';
 import { Frame, Track, View, ViewPager } from 'react-view-pager';
 import { ItemPopupTab } from './ItemPopupBody';
 import NewItemActions from './NewItemActions';
+import { DimStore } from '../inventory/store-types';
+import NewItemDetails from './NewItemDetails';
 
 /** The main portion of the item popup, with pages of info (Actions, Details, Reviews) */
 export default function NewItemPopupBody({
@@ -19,32 +19,31 @@ export default function NewItemPopupBody({
   extraInfo,
   tab,
   isPhonePortrait,
-  expanded,
-  onTabChanged,
-  onToggleExpanded
+  stores,
+  onTabChanged
 }: {
   item: DimItem;
   failureStrings?: string[];
   extraInfo?: ItemPopupExtraInfo;
   tab: ItemPopupTab;
   isPhonePortrait: boolean;
-  expanded: boolean;
+  stores: DimStore[];
   onTabChanged(tab: ItemPopupTab): void;
-  onToggleExpanded(): void;
 }) {
   failureStrings = Array.from(failureStrings || []);
   if (!item.canPullFromPostmaster && item.location.inPostmaster) {
     failureStrings.push(t('MovePopup.CantPullFromPostmaster'));
   }
 
-  const showDetailsByDefault = !item.equipment && item.notransfer;
-  const itemDetails = showDetailsByDefault || expanded;
-
   const tabs = [
     {
       tab: ItemPopupTab.Overview,
       title: t('MovePopup.OverviewTab'),
-      component: <ItemOverview item={item} extraInfo={extraInfo} />
+      component: $featureFlags.newItemPopup ? (
+        <NewItemDetails item={item} extraInfo={extraInfo} stores={stores} />
+      ) : (
+        <ItemDetails item={item} extraInfo={extraInfo} />
+      )
     }
   ];
   if (isPhonePortrait) {
@@ -82,48 +81,41 @@ export default function NewItemPopupBody({
             </div>
           )
       )}
+
       <div className="move-popup-details">
-        {itemDetails ? (
-          tabs.length > 1 ? (
-            <>
-              <div className="move-popup-tabs">
-                {tabs.map((ta) => (
-                  <span
-                    key={ta.tab}
-                    className={classNames('move-popup-tab', {
-                      selected: tab === ta.tab
-                    })}
-                    onClick={() => onTabChanged(ta.tab)}
-                  >
-                    {ta.title}
-                  </span>
-                ))}
-              </div>
-              <ViewPager>
-                <Frame className="frame" autoSize="height">
-                  <Track
-                    currentView={tab.toString()}
-                    contain={false}
-                    className="track"
-                    onViewChange={onViewChange}
-                    onRest={onRest}
-                  >
-                    {tabs.map((ta) => (
-                      <View key={ta.tab.toString()}>{ta.component}</View>
-                    ))}
-                  </Track>
-                </Frame>
-              </ViewPager>
-            </>
-          ) : (
-            tabs[0].component
-          )
+        {tabs.length > 1 ? (
+          <>
+            <div className="move-popup-tabs">
+              {tabs.map((ta) => (
+                <span
+                  key={ta.tab}
+                  className={classNames('move-popup-tab', {
+                    selected: tab === ta.tab
+                  })}
+                  onClick={() => onTabChanged(ta.tab)}
+                >
+                  {ta.title}
+                </span>
+              ))}
+            </div>
+            <ViewPager>
+              <Frame className="frame" autoSize="height">
+                <Track
+                  currentView={tab.toString()}
+                  contain={false}
+                  className="track"
+                  onViewChange={onViewChange}
+                  onRest={onRest}
+                >
+                  {tabs.map((ta) => (
+                    <View key={ta.tab.toString()}>{ta.component}</View>
+                  ))}
+                </Track>
+              </Frame>
+            </ViewPager>
+          </>
         ) : (
-          <div className="item-popup-collapsed item-details">
-            <button className="dim-button" onClick={onToggleExpanded}>
-              <AppIcon icon={faChevronCircleDown} /> {t('MovePopup.Expand')}
-            </button>
-          </div>
+          tabs[0].component
         )}
       </div>
     </div>

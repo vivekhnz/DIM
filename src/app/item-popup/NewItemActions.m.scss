@@ -4,7 +4,7 @@
 .actions {
   composes: flexColumn from '../dim-ui/common.m.scss';
   padding: 8px 10px;
-  background: black;
+  background: #333;
 
   :global {
     // TODO: break these out
