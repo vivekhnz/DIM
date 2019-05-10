@@ -64,7 +64,7 @@
     "@types/react-dropzone": "^4.2.2",
     "@types/react-redux": "^7.0.3",
     "@types/react-transition-group": "^2.0.8",
-    "@typescript-eslint/eslint-plugin": "^1.4.2",
+    "@typescript-eslint/eslint-plugin": "1.7.0",
     "@typescript-eslint/eslint-plugin-tslint": "^1.4.2",
     "@typescript-eslint/parser": "^1.4.2",
     "autoprefixer": "^9.0.1",
