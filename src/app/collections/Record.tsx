@@ -79,21 +79,10 @@ export default function Record({
 
   const intervals = getIntervals(recordDef, record);
   const isMultiStep = intervals.length > 1;
-
   const objectives =
     intervals.length > 0
       ? [intervals[Math.min(record.intervalsRedeemedCount, intervals.length - 1)].objective]
       : record.objectives;
-  const showObjectives =
-    objectives &&
-    (objectives.length > 1 ||
-      (objectives.length === 1 &&
-        !(
-          defs.Objective.get(objectives[0].objectiveHash).valueStyle ===
-            DestinyUnlockValueUIStyle.Checkbox ||
-          (objectives[0].completionValue === 1 &&
-            !defs.Objective.get(objectives[0].objectiveHash).allowOvercompletion)
-        )));
 
   const triumph: TriumphInfo = {
     redeemed,
@@ -112,7 +101,7 @@ export default function Record({
     totalScore: isMultiStep
       ? _.sumBy(intervals, (i) => i.score)
       : recordDef.completionInfo && recordDef.completionInfo.ScoreValue,
-    objectives: showObjectives ? objectives : undefined,
+    objectives: shouldShowObjectives(objectives, defs) ? objectives : undefined,
     loreLink: recordDef.loreHash
       ? `http://www.ishtar-collective.net/entries/${recordDef.loreHash}`
       : undefined,
@@ -175,6 +164,32 @@ function getIntervals(
     prevIntervalProgress = data.completionValue;
   }
   return intervals;
+}
+
+function shouldShowObjectives(objectives: DestinyObjectiveProgress[], defs: D2ManifestDefinitions) {
+  if (!objectives || objectives.length === 0) {
+    return false;
+  }
+
+  // display objectives if we have more than one
+  if (objectives.length > 1) {
+    return true;
+  }
+
+  const objective = objectives[0];
+  const def = defs.Objective.get(objective.objectiveHash);
+
+  // don't show objective if it is simply a checkbox
+  if (def.valueStyle === DestinyUnlockValueUIStyle.Checkbox) {
+    return false;
+  }
+
+  // don't show objective if it's completion value is 1 and it doesn't support over-completion
+  if (!def.allowOvercompletion && def.completionValue === 1) {
+    return false;
+  }
+
+  return true;
 }
 
 function obscure(triumph: TriumphInfo, definition: DestinyRecordDefinition): TriumphInfo {
