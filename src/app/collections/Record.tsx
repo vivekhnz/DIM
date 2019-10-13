@@ -38,6 +38,12 @@ interface RecordInterval {
 }
 
 interface TriumphInfo {
+  redeemed: boolean;
+  unlocked: boolean;
+  obscured: boolean;
+  tracked: boolean;
+
+  recordIcon?: string;
   name?: string;
   description?: string;
   scoreValue?: JSX.Element;
@@ -59,27 +65,14 @@ export default function Record({
   if (!recordDef) {
     return null;
   }
-  const record = getRecordComponent(recordDef, profileResponse);
 
+  const record = getRecordComponent(recordDef, profileResponse);
   if (record === undefined || record.state & DestinyRecordState.Invisible || recordDef.redacted) {
     return null;
   }
 
-  const acquired = Boolean(record.state & DestinyRecordState.RecordRedeemed);
-  const unlocked = !acquired && !(record.state & DestinyRecordState.ObjectiveNotCompleted);
-  const obscured =
-    !redactedRecordsRevealed &&
-    !unlocked &&
-    !acquired &&
-    Boolean(record.state & DestinyRecordState.Obscured);
-  const tracked =
-    idx(profileResponse, (p) => p.profileRecords.data.trackedRecordHash) === recordHash;
-
-  const recordIcon = overrideIcons.includes(recordHash)
-    ? catalystIcons[recordHash]
-    : recordDef.displayProperties.icon;
-
-  if (completedRecordsHidden && acquired) {
+  const redeemed = Boolean(record.state & DestinyRecordState.RecordRedeemed);
+  if (completedRecordsHidden && redeemed) {
     return null;
   }
 
@@ -113,7 +106,15 @@ export default function Record({
             !defs.Objective.get(objectives[0].objectiveHash).allowOvercompletion)
         )));
 
-  let triumph: TriumphInfo = {
+  const triumph: TriumphInfo = {
+    redeemed,
+    unlocked: !redeemed && !(record.state & DestinyRecordState.ObjectiveNotCompleted),
+    obscured: false,
+    tracked: idx(profileResponse, (p) => p.profileRecords.data.trackedRecordHash) === recordHash,
+
+    recordIcon: overrideIcons.includes(recordHash)
+      ? catalystIcons[recordHash]
+      : recordDef.displayProperties.icon,
     name: recordDef.displayProperties.name,
     description: recordDef.displayProperties.description,
     scoreValue,
@@ -123,78 +124,13 @@ export default function Record({
       : undefined,
     intervals
   };
-  if (obscured) {
-    triumph = obscure(triumph, recordDef);
-  }
 
-  const intervalBarStyle = {
-    width: `calc((100% / ${triumph.intervals.length}) - 2px)`
-  };
-  const allIntervalsCompleted = triumph.intervals.every((i) => i.percentCompleted >= 1.0);
-  return (
-    <div
-      className={clsx('triumph-record', {
-        redeemed: acquired,
-        unlocked,
-        obscured,
-        tracked,
-        multistep: triumph.intervals.length > 0
-      })}
-    >
-      {recordIcon && <BungieImage className="record-icon" src={recordIcon} />}
-      <div className="record-info">
-        {triumph.scoreValue && <div className="record-value">{triumph.scoreValue}</div>}
-        {triumph.name && <h3>{triumph.name}</h3>}
-        {triumph.description && triumph.description.length > 0 && <p>{triumph.description}</p>}
-        {triumph.objectives && (
-          <div className="record-objectives">
-            {triumph.objectives.map((objective) => (
-              <Objective key={objective.objectiveHash} objective={objective} defs={defs} />
-            ))}
-          </div>
-        )}
-        {triumph.loreLink && (
-          <div className="record-lore">
-            <ExternalLink href={triumph.loreLink}>
-              <img src={ishtarIcon} height="16" width="16" />
-            </ExternalLink>
-            <ExternalLink href={triumph.loreLink}>{t('MovePopup.ReadLore')}</ExternalLink>
-          </div>
-        )}
-        {tracked && <img className="trackedIcon" src={trackedIcon} />}
-      </div>
-      {triumph.intervals.length > 0 && (
-        <div
-          className={clsx('record-interval-container', {
-            complete: allIntervalsCompleted
-          })}
-        >
-          {!allIntervalsCompleted &&
-            triumph.intervals.map((i) => {
-              const redeemed = i.isRedeemed;
-              const unlocked = i.percentCompleted >= 1.0;
-              return (
-                <div
-                  key={i.objective.objectiveHash}
-                  className={clsx('record-interval', {
-                    redeemed,
-                    unlocked: unlocked && !redeemed
-                  })}
-                  style={intervalBarStyle}
-                >
-                  {!(redeemed || unlocked) && (
-                    <div
-                      className="record-interval unlocked"
-                      style={{ width: percent(i.percentCompleted) }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-        </div>
-      )}
-    </div>
-  );
+  const obscured =
+    !redactedRecordsRevealed &&
+    !triumph.unlocked &&
+    !triumph.redeemed &&
+    Boolean(record.state & DestinyRecordState.Obscured);
+  return renderTriumph(obscured ? obscure(triumph, recordDef) : triumph, defs);
 }
 
 export function getRecordComponent(
@@ -247,8 +183,14 @@ function getIntervals(
   return intervals;
 }
 
-function obscure(_triumph: TriumphInfo, definition: DestinyRecordDefinition): TriumphInfo {
+function obscure(triumph: TriumphInfo, definition: DestinyRecordDefinition): TriumphInfo {
   return {
+    redeemed: triumph.redeemed,
+    unlocked: triumph.unlocked,
+    obscured: true,
+    tracked: triumph.tracked,
+
+    recordIcon: triumph.recordIcon,
     name: t('Progress.SecretTriumph'),
     description: definition.stateInfo.obscuredString,
     scoreValue: undefined,
@@ -256,4 +198,75 @@ function obscure(_triumph: TriumphInfo, definition: DestinyRecordDefinition): Tr
     loreLink: undefined,
     intervals: []
   };
+}
+
+function renderTriumph(triumph: TriumphInfo, defs: D2ManifestDefinitions) {
+  const intervalBarStyle = {
+    width: `calc((100% / ${triumph.intervals.length}) - 2px)`
+  };
+  const allIntervalsCompleted = triumph.intervals.every((i) => i.percentCompleted >= 1.0);
+  return (
+    <div
+      className={clsx('triumph-record', {
+        redeemed: triumph.redeemed,
+        unlocked: triumph.unlocked,
+        obscured: triumph.obscured,
+        tracked: triumph.tracked,
+        multistep: triumph.intervals.length > 0
+      })}
+    >
+      {triumph.recordIcon && <BungieImage className="record-icon" src={triumph.recordIcon} />}
+      <div className="record-info">
+        {triumph.scoreValue && <div className="record-value">{triumph.scoreValue}</div>}
+        {triumph.name && <h3>{triumph.name}</h3>}
+        {triumph.description && triumph.description.length > 0 && <p>{triumph.description}</p>}
+        {triumph.objectives && (
+          <div className="record-objectives">
+            {triumph.objectives.map((objective) => (
+              <Objective key={objective.objectiveHash} objective={objective} defs={defs} />
+            ))}
+          </div>
+        )}
+        {triumph.loreLink && (
+          <div className="record-lore">
+            <ExternalLink href={triumph.loreLink}>
+              <img src={ishtarIcon} height="16" width="16" />
+            </ExternalLink>
+            <ExternalLink href={triumph.loreLink}>{t('MovePopup.ReadLore')}</ExternalLink>
+          </div>
+        )}
+        {triumph.tracked && <img className="trackedIcon" src={trackedIcon} />}
+      </div>
+      {triumph.intervals.length > 0 && (
+        <div
+          className={clsx('record-interval-container', {
+            complete: allIntervalsCompleted
+          })}
+        >
+          {!allIntervalsCompleted &&
+            triumph.intervals.map((i) => {
+              const redeemed = i.isRedeemed;
+              const unlocked = i.percentCompleted >= 1.0;
+              return (
+                <div
+                  key={i.objective.objectiveHash}
+                  className={clsx('record-interval', {
+                    redeemed,
+                    unlocked: unlocked && !redeemed
+                  })}
+                  style={intervalBarStyle}
+                >
+                  {!(redeemed || unlocked) && (
+                    <div
+                      className="record-interval unlocked"
+                      style={{ width: percent(i.percentCompleted) }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
+    </div>
+  );
 }
