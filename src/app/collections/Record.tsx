@@ -46,7 +46,8 @@ interface TriumphInfo {
   recordIcon?: string;
   name?: string;
   description?: string;
-  scoreValue?: JSX.Element;
+  redeemedScore?: number;
+  totalScore?: number;
   objectives?: DestinyObjectiveProgress[];
   loreLink?: string;
   intervals: RecordInterval[];
@@ -77,19 +78,7 @@ export default function Record({
   }
 
   const intervals = getIntervals(recordDef, record);
-  let scoreValue = recordDef.completionInfo && (
-    <>{t('Progress.RecordValue', { value: recordDef.completionInfo.ScoreValue })}</>
-  );
-  if (intervals.length > 1) {
-    const currentScore = _.sumBy(_.take(intervals, record.intervalsRedeemedCount), (i) => i.score);
-    const totalScore = _.sumBy(intervals, (i) => i.score);
-    scoreValue = (
-      <>
-        <span className="current">{currentScore}</span> /{' '}
-        {t('Progress.RecordValue', { value: totalScore })}
-      </>
-    );
-  }
+  const isMultiStep = intervals.length > 1;
 
   const objectives =
     intervals.length > 0
@@ -117,7 +106,12 @@ export default function Record({
       : recordDef.displayProperties.icon,
     name: recordDef.displayProperties.name,
     description: recordDef.displayProperties.description,
-    scoreValue,
+    redeemedScore: isMultiStep
+      ? _.sumBy(_.take(intervals, record.intervalsRedeemedCount), (i) => i.score)
+      : undefined,
+    totalScore: isMultiStep
+      ? _.sumBy(intervals, (i) => i.score)
+      : recordDef.completionInfo && recordDef.completionInfo.ScoreValue,
     objectives: showObjectives ? objectives : undefined,
     loreLink: recordDef.loreHash
       ? `http://www.ishtar-collective.net/entries/${recordDef.loreHash}`
@@ -193,7 +187,8 @@ function obscure(triumph: TriumphInfo, definition: DestinyRecordDefinition): Tri
     recordIcon: triumph.recordIcon,
     name: t('Progress.SecretTriumph'),
     description: definition.stateInfo.obscuredString,
-    scoreValue: undefined,
+    redeemedScore: undefined,
+    totalScore: undefined,
     objectives: undefined,
     loreLink: undefined,
     intervals: []
@@ -204,6 +199,7 @@ function renderTriumph(triumph: TriumphInfo, defs: D2ManifestDefinitions) {
   const intervalBarStyle = {
     width: `calc((100% / ${triumph.intervals.length}) - 2px)`
   };
+  const totalScore = t('Progress.RecordValue', { value: triumph.totalScore });
   return (
     <div
       className={clsx('triumph-record', {
@@ -216,7 +212,17 @@ function renderTriumph(triumph: TriumphInfo, defs: D2ManifestDefinitions) {
     >
       {triumph.recordIcon && <BungieImage className="record-icon" src={triumph.recordIcon} />}
       <div className="record-info">
-        {triumph.scoreValue && <div className="record-value">{triumph.scoreValue}</div>}
+        {(triumph.totalScore || undefined) && (
+          <div className="record-value">
+            {triumph.redeemedScore === undefined ? (
+              totalScore
+            ) : (
+              <>
+                <span className="current">{triumph.redeemedScore}</span> / {totalScore}
+              </>
+            )}
+          </div>
+        )}
         {triumph.name && <h3>{triumph.name}</h3>}
         {triumph.description && triumph.description.length > 0 && <p>{triumph.description}</p>}
         {triumph.objectives && (
