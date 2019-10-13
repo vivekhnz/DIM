@@ -204,7 +204,6 @@ function renderTriumph(triumph: TriumphInfo, defs: D2ManifestDefinitions) {
   const intervalBarStyle = {
     width: `calc((100% / ${triumph.intervals.length}) - 2px)`
   };
-  const allIntervalsCompleted = triumph.intervals.every((i) => i.percentCompleted >= 1.0);
   return (
     <div
       className={clsx('triumph-record', {
@@ -237,36 +236,39 @@ function renderTriumph(triumph: TriumphInfo, defs: D2ManifestDefinitions) {
         )}
         {triumph.tracked && <img className="trackedIcon" src={trackedIcon} />}
       </div>
-      {triumph.intervals.length > 0 && (
-        <div
-          className={clsx('record-interval-container', {
-            complete: allIntervalsCompleted
-          })}
-        >
-          {!allIntervalsCompleted &&
-            triumph.intervals.map((i) => {
-              const redeemed = i.isRedeemed;
-              const unlocked = i.percentCompleted >= 1.0;
-              return (
+      {triumph.intervals.length > 0 &&
+        (triumph.intervals[triumph.intervals.length - 1].percentCompleted >= 1.0 ? (
+          <div className="record-interval-container complete" />
+        ) : (
+          <div className="record-interval-container">
+            {triumph.intervals.map((i) => {
+              return i.isRedeemed ? (
                 <div
                   key={i.objective.objectiveHash}
-                  className={clsx('record-interval', {
-                    redeemed,
-                    unlocked: unlocked && !redeemed
-                  })}
                   style={intervalBarStyle}
+                  className="record-interval redeemed"
+                />
+              ) : i.percentCompleted >= 1.0 ? (
+                <div
+                  key={i.objective.objectiveHash}
+                  style={intervalBarStyle}
+                  className="record-interval unlocked"
+                />
+              ) : (
+                <div
+                  key={i.objective.objectiveHash}
+                  style={intervalBarStyle}
+                  className="record-interval"
                 >
-                  {!(redeemed || unlocked) && (
-                    <div
-                      className="record-interval unlocked"
-                      style={{ width: percent(i.percentCompleted) }}
-                    />
-                  )}
+                  <div
+                    className="record-interval unlocked"
+                    style={{ width: percent(i.percentCompleted) }}
+                  />
                 </div>
               );
             })}
-        </div>
-      )}
+          </div>
+        ))}
     </div>
   );
 }
