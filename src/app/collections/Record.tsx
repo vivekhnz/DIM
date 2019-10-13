@@ -113,19 +113,19 @@ export default function Record({
             !defs.Objective.get(objectives[0].objectiveHash).allowOvercompletion)
         )));
 
-  const triumph: TriumphInfo = {
-    name: obscured ? t('Progress.SecretTriumph') : recordDef.displayProperties.name,
-    description: obscured
-      ? recordDef.stateInfo.obscuredString
-      : recordDef.displayProperties.description,
-    scoreValue: !obscured ? scoreValue : undefined,
-    objectives: !obscured && showObjectives ? objectives : undefined,
-    loreLink:
-      !obscured && recordDef.loreHash
-        ? `http://www.ishtar-collective.net/entries/${recordDef.loreHash}`
-        : undefined,
-    intervals: obscured ? [] : intervals
+  let triumph: TriumphInfo = {
+    name: recordDef.displayProperties.name,
+    description: recordDef.displayProperties.description,
+    scoreValue,
+    objectives: showObjectives ? objectives : undefined,
+    loreLink: recordDef.loreHash
+      ? `http://www.ishtar-collective.net/entries/${recordDef.loreHash}`
+      : undefined,
+    intervals
   };
+  if (obscured) {
+    triumph = obscure(triumph, recordDef);
+  }
 
   const intervalBarStyle = {
     width: `calc((100% / ${triumph.intervals.length}) - 2px)`
@@ -245,4 +245,15 @@ function getIntervals(
     prevIntervalProgress = data.completionValue;
   }
   return intervals;
+}
+
+function obscure(_triumph: TriumphInfo, definition: DestinyRecordDefinition): TriumphInfo {
+  return {
+    name: t('Progress.SecretTriumph'),
+    description: definition.stateInfo.obscuredString,
+    scoreValue: undefined,
+    objectives: undefined,
+    loreLink: undefined,
+    intervals: []
+  };
 }
